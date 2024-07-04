@@ -1,3 +1,4 @@
+# Compatible with Python 3.10.12
 certifi==2024.7.4
 charset-normalizer==3.3.2
 idna==3.7
