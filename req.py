@@ -38,8 +38,6 @@ def update_brawler_stats(brawler_stats, brawler_name, win_status):
         brawler_stats[brawler_name]["loss"] += 1
         print(brawler_name, "loss")
         
-# Function to fetch and process the battle log
-# Function to fetch and process the battle log
 def fetch_battle_log(player_tag):
     BASE_URL = f'https://api.brawlstars.com/v1/players/{player_tag.replace("#", "%23")}/battlelog'
     response = requests.get(BASE_URL, headers=HEADERS)
