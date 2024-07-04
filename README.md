@@ -35,6 +35,8 @@
    BRAWL_STARS_API_KEY=your_api_key_here
    BRAWL_STARS_PLAYER_TAG=#your_player_tag_here
    ```
+4. **Hide the .env file**
+   Create a .gitignore file and add the .env file to it
 5. **Run the Script(s)**
    ```bash
    python3 script_name.py
