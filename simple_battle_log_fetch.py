@@ -2,7 +2,7 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
-
+from utils import get_player_name
 # Load environment variables from .env file
 load_dotenv()
 
@@ -33,16 +33,16 @@ def update_brawler_stats(brawler_stats, brawler_name, win_status):
         brawler_stats[brawler_name] = {"win": 0, "loss": 0}
     if result == "victory":
         brawler_stats[brawler_name]["win"] += 1
-        print(brawler_name, "win")
+        # print(brawler_name, "win")
     elif result == "defeat":
         brawler_stats[brawler_name]["loss"] += 1
-        print(brawler_name, "loss")
+        # print(brawler_name, "loss")
         
-
 def fetch_battle_log(player_tag):
     BASE_URL = f'https://api.brawlstars.com/v1/players/{player_tag.replace("#", "%23")}/battlelog'
     response = requests.get(BASE_URL, headers=HEADERS)
     if response.status_code == 200:
+        print(f'Now getting stats for {get_player_name(player_tag)} player')
         # Get the JSON response
         battle_log = response.json()
         
@@ -52,11 +52,10 @@ def fetch_battle_log(player_tag):
         # Process the battle log to calculate win rates
         for item in battle_log.get('items', []):
             battle = item.get('battle')
-            if not battle:
+            if not battle or (battle.get('mode') in ['soloShowdown', 'duoShowdown']):
                 continue
 
-            # Ignore solo and duo showdown games
-            if battle.get('mode') in ['soloShowdown', 'duoShowdown']:
+            if not item.get('event').get('mode') or "5V5" in item.get('event').get('mode'):
                 continue
 
             # Identify all brawlers in the battle
@@ -76,13 +75,13 @@ def fetch_battle_log(player_tag):
             stats['winrate'] = stats['win'] / total_games if total_games > 0 else 0
         
         pretty_brawler_stats = json.dumps(brawler_stats, indent=4)
-        print(pretty_brawler_stats)
+        # print(pretty_brawler_stats)
         
         # Export the prettified JSON response to a file
-        with open('brawler_winrates.json', 'w') as file:
+        with open('simple_brawler_winrates.json', 'w') as file:
             file.write(pretty_brawler_stats)
         
-        print("Brawler winrates saved to 'brawler_winrates.json'")
+        print("Brawler winrates saved to 'simple_brawler_winrates.json'")
     else:
         print(f"Failed to fetch battle log: {response.status_code}, {response.text}")
 
