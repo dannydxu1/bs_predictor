@@ -29,10 +29,13 @@ def get_player_team_index(player_tag, teams):
                 return index
     return None
 
-def update_brawler_stats(brawler_stats, brawler_name, win_status):
+def update_brawler_stats(brawler_stats, brawler_name, win_status, popular_brawlers):
     result = "victory" if win_status else "defeat"
     if brawler_name not in brawler_stats:
+        popular_brawlers[brawler_name] = 1
         brawler_stats[brawler_name] = {"win": 0, "loss": 0}
+    else:
+        popular_brawlers[brawler_name] += 1
     if result == "victory":
         brawler_stats[brawler_name]["win"] += 1
     elif result == "defeat":
@@ -49,7 +52,7 @@ def create_battle_hash(battle_time, teams):
     hash_input += "".join(players)
     return hash_input
 
-def fetch_battle_log_first_pass(player_tag, brawler_stats, seen_players, processed_battles):
+def fetch_battle_log(pass_iteration, player_tag, brawler_stats, seen_players, processed_battles, popular_brawlers, dupes=0, battles=0):
     BASE_URL = f'https://api.brawlstars.com/v1/players/{player_tag.replace("#", "%23")}/battlelog'
     response = requests.get(BASE_URL, headers=HEADERS)
     if response.status_code == 200:
@@ -62,11 +65,18 @@ def fetch_battle_log_first_pass(player_tag, brawler_stats, seen_players, process
             # Ignore solo and duo showdown games
             if battle.get('mode') in ['soloShowdown', 'duoShowdown']:
                 continue
-
+            
             battle_hash = create_battle_hash(item.get('battleTime'), battle.get('teams', []))
-            processed_battles.add(battle_hash)
-            global battles
-            battles += 1
+            if pass_iteration == 1:
+                processed_battles.add(battle_hash)
+                battles += 1
+            else:
+                if battle_hash in processed_battles:
+                    dupes += 1
+                    print("Duplicate battle detected, #:",dupes)
+                    continue
+                processed_battles.add(battle_hash)
+                battles += 1
 
             # Process Winners and Losers
             teams = battle.get('teams', [])
@@ -75,61 +85,26 @@ def fetch_battle_log_first_pass(player_tag, brawler_stats, seen_players, process
                 secondary_team_index = 1 - primary_team_index
                 primary_team_victory = True if (battle.get('result') and battle.get('result') == 'victory') else False
                 for player in teams[primary_team_index]:
-                    update_brawler_stats(brawler_stats, player['brawler']['name'], primary_team_victory)
-                    seen_players.add(player['tag'])
+                    update_brawler_stats(brawler_stats, player['brawler']['name'], primary_team_victory, popular_brawlers)
+                    if pass_iteration == 1:
+                        seen_players.add(player['tag'])
                 for player in teams[secondary_team_index]:
-                    update_brawler_stats(brawler_stats, player['brawler']['name'], not primary_team_victory)
-                    seen_players.add(player['tag'])
+                    update_brawler_stats(brawler_stats, player['brawler']['name'], not primary_team_victory, popular_brawlers)
+                    if pass_iteration == 1:
+                        seen_players.add(player['tag'])
     else:
         print(f"Failed to fetch battle log: {response.status_code}, {response.text}")
+    return dupes, battles
 
-
-def fetch_battle_log_sequential_passes(player_tag, brawler_stats, processed_battles):
-    BASE_URL = f'https://api.brawlstars.com/v1/players/{player_tag.replace("#", "%23")}/battlelog'
-    response = requests.get(BASE_URL, headers=HEADERS)
-    if response.status_code == 200:
-        battle_log = response.json()
-        for item in battle_log.get('items', []):
-            battle = item.get('battle')
-            if not battle:
-                continue
-
-            # Ignore solo and duo showdown games
-            if battle.get('mode') in ['soloShowdown', 'duoShowdown']:
-                continue
-        
-            battle_hash = create_battle_hash(item.get('battleTime'), battle.get('teams', []))
-            if battle_hash in processed_battles:
-                global dupes
-                dupes += 1
-                print("DUPLICATE BATTLE DETECTED, #: ",dupes)
-                continue
-            processed_battles.add(battle_hash)
-            global battles
-            battles += 1
-
-            # Process Winners and Losers
-            teams = battle.get('teams', [])
-            primary_team_index = get_player_team_index(player_tag, teams)
-            if len(teams) == 2:
-                secondary_team_index = 1 - primary_team_index
-                primary_team_victory = True if (battle.get('result') and battle.get('result') == 'victory') else False
-                for player in teams[primary_team_index]:
-                    update_brawler_stats(brawler_stats, player['brawler']['name'], primary_team_victory)
-                for player in teams[secondary_team_index]:
-                    update_brawler_stats(brawler_stats, player['brawler']['name'], not primary_team_victory)
-    else:
-        print(f"Failed to fetch battle log: {response.status_code}, {response.text}")
-
-dupes = 0
-battles = 0
 
 def main():
+    dupes = battles = 0
     seen_players = set()
     brawler_stats = {}
+    popular_brawlers = {}
     processed_battles = set()
-
-    fetch_battle_log_first_pass(PLAYER_TAG, brawler_stats, seen_players, processed_battles)
+    iterations = 1
+    dupes, battles = fetch_battle_log(iterations, PLAYER_TAG, brawler_stats, seen_players, processed_battles, popular_brawlers, dupes=dupes, battles=battles)
     print(f'Initial player count: {len(seen_players)}')
     count = 1
     # Fetch battle logs for new player tags
@@ -138,26 +113,33 @@ def main():
         formatted_percentage = "{:.2f}".format(((count / len(seen_players)) * 100))
         print(f"Status: {formatted_percentage}% done")
         if new_player_tag != PLAYER_TAG:
-            fetch_battle_log_sequential_passes(new_player_tag, brawler_stats, processed_battles)
-
+            iterations += 1
+            dupes, battles = fetch_battle_log(iterations, new_player_tag, brawler_stats, seen_players, processed_battles, popular_brawlers, dupes=dupes, battles=battles)
+    
     # Calculate win rates
     for brawler, stats in brawler_stats.items():
         total_games = stats['win'] + stats['loss']
         stats['winrate'] = stats['win'] / total_games if total_games > 0 else 0
 
     # Sort the brawler_stats dictionary by winrate
-    sorted_brawler_stats = dict(sorted(brawler_stats.items(), key=lambda item: item[1]['winrate'], reverse=True))
-
-    # Prettify the JSON response
-    pretty_brawler_stats = json.dumps(sorted_brawler_stats, indent=4)
-    print(pretty_brawler_stats)
+    pretty_popular_brawler_alpabetical_stats = json.dumps({k: popular_brawlers[k] for k in sorted(popular_brawlers)}, indent=4)
+    pretty_popular_brawler_stats = json.dumps(dict(sorted(popular_brawlers.items(), key=lambda item: item[1], reverse=True)), indent=4)
+    pretty_brawler_winrate_stats = json.dumps(dict(sorted(brawler_stats.items(), key=lambda item: item[1]['winrate'], reverse=True)), indent=4)
+    # print(pretty_brawler_stats)
+    # print(pretty_popular_brawler_stats)
     
     # Export the prettified JSON response to a file
-    with open('combined_brawler_winrates.json', 'w') as file:
-        file.write(pretty_brawler_stats)
-    
+    with open('brawler_winrates.json', 'w') as file:
+        file.write(pretty_brawler_winrate_stats)
+        print("Updated'brawler_winrates.json'")
+    with open('brawler_popularity_alphabetical.json', 'w') as file:
+        file.write(pretty_popular_brawler_alpabetical_stats)
+        print("Updated'brawler_popularity_alphabetical.json'")
+    with open('brawler_popularity.json', 'w') as file:
+        file.write(pretty_popular_brawler_stats)
+        print("Updated'brawler_popularity.json'")
+
     print(f'Sucessfully evaluted {battles} unique battles.')
-    print("Combined brawler winrates saved to 'combined_brawler_winrates.json'")
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Script executed in {elapsed_time:.2f} seconds")
