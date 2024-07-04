@@ -1,0 +1,287 @@
+{
+    "DYNAMIKE": {
+        "win": 1,
+        "loss": 3,
+        "winrate": 0.25
+    },
+    "NITA": {
+        "win": 0,
+        "loss": 1,
+        "winrate": 0.0
+    },
+    "BIBI": {
+        "win": 0,
+        "loss": 1,
+        "winrate": 0.0
+    },
+    "JACKY": {
+        "win": 1,
+        "loss": 1,
+        "winrate": 0.5
+    },
+    "BULL": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "MORTIS": {
+        "win": 6,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "CHESTER": {
+        "win": 1,
+        "loss": 1,
+        "winrate": 0.5
+    },
+    "COLT": {
+        "win": 1,
+        "loss": 5,
+        "winrate": 0.16666666666666666
+    },
+    "FANG": {
+        "win": 4,
+        "loss": 1,
+        "winrate": 0.8
+    },
+    "JESSIE": {
+        "win": 2,
+        "loss": 1,
+        "winrate": 0.6666666666666666
+    },
+    "COLETTE": {
+        "win": 2,
+        "loss": 4,
+        "winrate": 0.3333333333333333
+    },
+    "GROM": {
+        "win": 2,
+        "loss": 1,
+        "winrate": 0.6666666666666666
+    },
+    "ANGELO": {
+        "win": 8,
+        "loss": 8,
+        "winrate": 0.5
+    },
+    "MICO": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "BYRON": {
+        "win": 3,
+        "loss": 3,
+        "winrate": 0.5
+    },
+    "EVE": {
+        "win": 6,
+        "loss": 4,
+        "winrate": 0.6
+    },
+    "BO": {
+        "win": 1,
+        "loss": 5,
+        "winrate": 0.16666666666666666
+    },
+    "TICK": {
+        "win": 2,
+        "loss": 1,
+        "winrate": 0.6666666666666666
+    },
+    "BELLE": {
+        "win": 2,
+        "loss": 3,
+        "winrate": 0.4
+    },
+    "EMZ": {
+        "win": 2,
+        "loss": 3,
+        "winrate": 0.4
+    },
+    "GALE": {
+        "win": 0,
+        "loss": 2,
+        "winrate": 0.0
+    },
+    "RICO": {
+        "win": 3,
+        "loss": 2,
+        "winrate": 0.6
+    },
+    "SURGE": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "FRANK": {
+        "win": 1,
+        "loss": 3,
+        "winrate": 0.25
+    },
+    "BUSTER": {
+        "win": 0,
+        "loss": 1,
+        "winrate": 0.0
+    },
+    "BROCK": {
+        "win": 1,
+        "loss": 4,
+        "winrate": 0.2
+    },
+    "PIPER": {
+        "win": 5,
+        "loss": 4,
+        "winrate": 0.5555555555555556
+    },
+    "CARL": {
+        "win": 0,
+        "loss": 2,
+        "winrate": 0.0
+    },
+    "SQUEAK": {
+        "win": 0,
+        "loss": 2,
+        "winrate": 0.0
+    },
+    "SPROUT": {
+        "win": 0,
+        "loss": 2,
+        "winrate": 0.0
+    },
+    "EL PRIMO": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "ROSA": {
+        "win": 1,
+        "loss": 1,
+        "winrate": 0.5
+    },
+    "MR. P": {
+        "win": 2,
+        "loss": 1,
+        "winrate": 0.6666666666666666
+    },
+    "CHARLIE": {
+        "win": 1,
+        "loss": 1,
+        "winrate": 0.5
+    },
+    "TARA": {
+        "win": 1,
+        "loss": 1,
+        "winrate": 0.5
+    },
+    "POCO": {
+        "win": 2,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "MANDY": {
+        "win": 2,
+        "loss": 4,
+        "winrate": 0.3333333333333333
+    },
+    "DRACO": {
+        "win": 2,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "LARRY & LAWRIE": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "CROW": {
+        "win": 2,
+        "loss": 1,
+        "winrate": 0.6666666666666666
+    },
+    "GRAY": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "DOUG": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "EDGAR": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "LOLA": {
+        "win": 0,
+        "loss": 1,
+        "winrate": 0.0
+    },
+    "SAM": {
+        "win": 1,
+        "loss": 1,
+        "winrate": 0.5
+    },
+    "BEA": {
+        "win": 0,
+        "loss": 1,
+        "winrate": 0.0
+    },
+    "LEON": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "NANI": {
+        "win": 0,
+        "loss": 1,
+        "winrate": 0.0
+    },
+    "BONNIE": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "GENE": {
+        "win": 2,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "SPIKE": {
+        "win": 0,
+        "loss": 1,
+        "winrate": 0.0
+    },
+    "AMBER": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "PAM": {
+        "win": 0,
+        "loss": 1,
+        "winrate": 0.0
+    },
+    "GUS": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "BUZZ": {
+        "win": 0,
+        "loss": 1,
+        "winrate": 0.0
+    },
+    "BERRY": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    },
+    "BARLEY": {
+        "win": 1,
+        "loss": 0,
+        "winrate": 1.0
+    }
+}
