@@ -6,6 +6,7 @@
 
 - Python 3.x
 - pip (Python package installer)
+- [Brawl Stars Developer Account](https://developer.brawlstars.com/#/) and API Key
 
 ### Setting Up the Project
 
