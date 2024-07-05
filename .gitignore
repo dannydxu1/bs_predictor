@@ -2,5 +2,3 @@
 venv/
 *.json
 *.csv
-data
-data/*.csv
