@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 import time
 import hashlib
-from scripts.utils import get_player_name, print_progress_bar
+from utils import get_player_name, print_progress_bar
 
 # Load environment variables from .env file
 start_time = time.time()
@@ -85,16 +85,14 @@ def create_battle_hash(battle_time, teams):
     hash_input += "".join(players)
     return hashlib.sha256(hash_input.encode()).hexdigest()
 
-def process_teams(pass_iteration, brawler_stats, seen_players, teams, primary_team_victory, primary_team_index):
+def process_teams(brawler_stats, to_traverse, teams, primary_team_victory, primary_team_index):
     secondary_team_index = 1 - primary_team_index
     for player in teams[primary_team_index]:
         brawler_stats.update_brawler_stats(player['brawler']['name'], primary_team_victory)
-        if pass_iteration == 1:
-            seen_players.add(player['tag'])
+        to_traverse.add(player['tag']) # Each newly encountered player is added to the traversal set
     for player in teams[secondary_team_index]:
         brawler_stats.update_brawler_stats(player['brawler']['name'], not primary_team_victory)
-        if pass_iteration == 1:
-            seen_players.add(player['tag'])
+        to_traverse.add(player['tag'])
 
 def print_and_save_stats(brawler_stats, popular_brawlers):
     formatted_popular_brawler_alphabetical_stats = json.dumps({k: popular_brawlers[k] for k in sorted(popular_brawlers)}, indent=4)
@@ -113,55 +111,58 @@ def print_and_save_stats(brawler_stats, popular_brawlers):
         file.write(formatted_popular_brawler_stats)
         print("Updated 'brawler_popularity.json'")
 
-def fetch_battle_log(pass_iteration, player_tag, brawler_stats, seen_players, battle_tracker):
+def fetch_battle_log(player_tag, brawler_stats, seen_players, to_traverse, battle_tracker):
     BASE_URL = f'https://api.brawlstars.com/v1/players/{player_tag.replace("#", "%23")}/battlelog'
     response = requests.get(BASE_URL, headers=HEADERS)
     
     if response.status_code == 200:
         battle_log = response.json()
-        print(f'Now getting stats for player [{get_player_name(player_tag)}] ')
-        for item in battle_log.get('items', []):
-            battle = item.get('battle')
-            # print(item.get('event'), battle.get('mode'))
-            if not battle or (battle.get('mode') in ['soloShowdown', 'duoShowdown']):
-                continue
-            
-            if not item.get('event').get('mode') or "5V5" in item.get('event').get('mode'): # sometimes ID == 0 and mode == None
-                continue
+        current_player_tag = get_player_name(player_tag)
+        if current_player_tag not in seen_players: # Avoid seen players
+            # print(f'Now getting stats for player [{current_player_tag}] ')
+            for item in battle_log.get('items', []):
+                battle = item.get('battle')
+                if not battle or (battle.get('mode') in ['soloShowdown', 'duoShowdown']):
+                    continue
+                
+                if not item.get('event').get('mode') or "5V5" in item.get('event').get('mode'): # sometimes ID == 0 and mode == None
+                    continue
 
-            battle_hash = create_battle_hash(item.get('battleTime'), battle.get('teams', []))
-            if battle_tracker.is_battle_processed(battle_hash):
-                battle_tracker.update_duplicate_battles(1)
-                continue
-            battle_tracker.add_processed_battle(battle_hash)
-            battle_tracker.update_unique_battles(1)
+                # Avoid duplicate battles
+                battle_hash = create_battle_hash(item.get('battleTime'), battle.get('teams', []))
+                if battle_tracker.is_battle_processed(battle_hash):
+                    battle_tracker.update_duplicate_battles(1)
+                    continue
+                battle_tracker.add_processed_battle(battle_hash)
+                battle_tracker.update_unique_battles(1)
 
-            teams = battle.get('teams', [])
-            primary_team_index = get_player_team_index(player_tag, teams)
-            if len(teams) == 2:
-                primary_team_victory = True if (battle.get('result') and battle.get('result') == 'victory') else False
-                process_teams(pass_iteration, brawler_stats, seen_players, teams, primary_team_victory, primary_team_index)
+                # Process stats on a per player per team basis
+                teams = battle.get('teams', [])
+                primary_team_index = get_player_team_index(player_tag, teams)
+                if len(teams) == 2:
+                    primary_team_victory = True if (battle.get('result') and battle.get('result') == 'victory') else False
+                    process_teams(brawler_stats, to_traverse, teams, primary_team_victory, primary_team_index)
+        seen_players.add(current_player_tag)
     else:
         print(f"Failed to fetch battle log: {response.status_code}, {response.text} using request URL: {BASE_URL}")
 
-def main():
+def main(initial_player_tag, battle_quantity):
     battle_tracker = BattleLogTracker()
-    seen_players = set()
-    traversed_players = set()
     brawler_stats = BrawlerStats()
-    iterations = count = 1
-    initial_player_tag = "#PLYYP2RRQ" 
-    fetch_battle_log(iterations, initial_player_tag, brawler_stats, seen_players, battle_tracker) # update seen_players to all players in first players battle log
-    traversed_players.add(initial_player_tag) # add first player to traversed players set
-    print(f'Initial player count: {len(seen_players)}')
-    for new_player_tag in seen_players: # iterate over each of the first players seen playres
-        count += 1
-        if new_player_tag not in traversed_players: # check that the player has not been traversed yet
-            traversed_players.add(new_player_tag) # add the new player to the traversed set
-            iterations += 1
-            print_progress_bar(count, len(seen_players), prefix='Progress:', suffix='Complete', length=50)
-            fetch_battle_log(iterations, new_player_tag, brawler_stats, seen_players, battle_tracker)
-    
+    seen_players, to_traverse = set(), set()
+    to_traverse.add(initial_player_tag) 
+    # while there are players to traverse and we haven't reached the desired number of battles
+    while to_traverse and battle_tracker.unique_battles < battle_quantity:
+        # Copy the current traversal set to avoid modifying it while iterating
+        traverse_copy = to_traverse.copy()
+        to_traverse.clear()
+        for player_tag in traverse_copy: # Process every player in the traversal copy, resulting in newly encountered players being processed
+            print_progress_bar(battle_tracker.unique_battles, battle_quantity, prefix='Progress:', suffix='Complete', length=100)
+            if battle_tracker.unique_battles > battle_quantity:
+                break
+            fetch_battle_log(player_tag, brawler_stats, seen_players, to_traverse, battle_tracker) # Processing results in to_traverse and battle_tracker objects changing during loop execution
+
+            
     # Calculate win rates
     brawler_stats.calculate_win_rates()
     stats, popular_brawlers = brawler_stats.get_stats()
@@ -174,4 +175,4 @@ def main():
     elapsed_time = end_time - start_time
     print(f"Script executed in {elapsed_time:.2f} seconds")
 
-main()
+main("#PLYYP2RRQ", 2000)
