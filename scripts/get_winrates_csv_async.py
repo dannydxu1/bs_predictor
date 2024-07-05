@@ -75,14 +75,9 @@ def get_player_team_index(player_tag, teams):
                 return index
     return None
 
-def create_battle_hash(battle_time, teams):
-    player_tags = []
-    for team in teams:
-        for player in team:
-            player_tags.append(player['tag'])
-    player_tags.sort()
+def create_battle_hash(battle_time, player_tags):
     unique_string = battle_time + ''.join(player_tags)
-    return hashlib.sha256(unique_string.encode()).hexdigest()
+    return unique_string
 
 async def fetch_battle_log(session, current_player_tag, brawler_stats, seen_players, to_traverse, battle_tracker, csv_writer):
     BASE_URL = f'https://api.brawlstars.com/v1/players/{current_player_tag.replace("#", "%23")}/battlelog'
@@ -90,48 +85,55 @@ async def fetch_battle_log(session, current_player_tag, brawler_stats, seen_play
         if response.status == 200:
             battle_log = await response.json()
             if current_player_tag not in seen_players:  # Avoid seen players
-                for item in battle_log.get('items', []):
+                for item in battle_log.get('items', []): # In a Battle
                     battle = item.get('battle')
                     if not battle or (battle.get('mode') not in ['gemGrab', 'knockout', 'heist', 'hotZone', 'bounty', 'brawlBall']):
                         continue
                     
                     if not item.get('event').get('mode') or "5V5" in item.get('event').get('mode'):  # sometimes ID == 0 and mode == None
                         continue
+                    
+                    teams = battle.get('teams', [])
+                    player_tags = []
+                    for team in teams:
+                        for player in team:
+                            player_tags.append(player['tag'])
+                    player_tags.sort()
 
                     # Avoid duplicate battles
-                    battle_hash = create_battle_hash(item.get('battleTime'), battle.get('teams', []))
+                    battle_hash = create_battle_hash(item.get('battleTime'), player_tags)
                     if battle_tracker.is_battle_processed(battle_hash):
                         battle_tracker.update_duplicate_battles()
                         continue
                     battle_tracker.add_processed_battle(battle_hash)
                     battle_tracker.update_unique_battles()
 
-                    # Process stats on a per player per team basis
-                    teams = battle.get('teams', [])
-                    primary_team_index = get_player_team_index(current_player_tag, teams)
                     if len(teams) == 2:
+                        primary_team_index = get_player_team_index(current_player_tag, teams)
                         primary_team_victory = True if (battle.get('result') and battle.get('result') == 'victory') else False
-                        for team_index, team in enumerate(teams):
-                            for player in team:
-                                teammates = sorted(p['brawler']['name'] for p in team if p['tag'] != player['tag'])
-                                opponents = sorted(p['brawler']['name'] for p in teams[1 - team_index])
-                                win_status = 1 if (primary_team_index == team_index and primary_team_victory) or (primary_team_index != team_index and not primary_team_victory) else 0
+                        primary_team = sorted(p['brawler']['name'] for p in teams[primary_team_index])
+                        opposing_team = sorted(p['brawler']['name'] for p in teams[1 - primary_team_index])
+                        winnners, losers = [], []
+                        if primary_team_victory:
+                            winners = primary_team
+                            losers = opposing_team
+                        else:
+                            winners = opposing_team
+                            losers = primary_team
 
-                                while len(teammates) < 2:
-                                    teammates.append('N/A')
-                                while len(opponents) < 3:
-                                    opponents.append('N/A')
+                        while len(primary_team) < 3:
+                            primary_team.append('N/A')
+                        while len(opposing_team) < 3:
+                            opposing_team.append('N/A')
 
-                                csv_writer.writerow([
-                                    player['brawler']['name'],
-                                    win_status,
-                                    item.get('event').get('mode'), 
-                                    item.get('event').get('map'),
-                                    '', '',
-                                    teammates[0], teammates[1],  # Explicitly adding teammates
-                                    opponents[0], opponents[1], opponents[2]  # Explicitly adding opponents
-                                ])
-                                to_traverse.add(player['tag'])
+                        csv_writer.writerow([
+                            item.get('event').get('mode'), 
+                            item.get('event').get('map'),
+                            winners[0], winners[1], winners[2], 
+                            losers[0], losers[1], losers[2]  
+                        ])
+                        for player in player_tags:
+                            to_traverse.add(player)
 
             seen_players.add(current_player_tag)
         else:
@@ -147,7 +149,7 @@ async def main(initial_player_tag, battle_quantity):
     with open('data/new_battle_data_rev2.csv', 'w', newline='') as csvfile:
         csv_writer = csv.writer(csvfile)
         # Write CSV header
-        csv_writer.writerow(['brawler_name', 'win', 'battle_mode', 'map_name', 'player_trophy_count', 'brawler_trophy_count', 'teammate_1', 'teammate_2', 'opponent_1', 'opponent_2', 'opponent_3'])
+        csv_writer.writerow(['battle_mode', 'map_name', 'winner_1', 'winner_2', 'winner_3', 'loser_1', 'loser_2', 'loser_3'])
 
         async with aiohttp.ClientSession() as session:
             while to_traverse and battle_tracker.unique_battles < battle_quantity:
