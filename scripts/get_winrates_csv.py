@@ -158,7 +158,7 @@ def main(initial_player_tag, battle_quantity):
     to_traverse.add(initial_player_tag) 
 
     # Open CSV file for writing
-    with open('battle_data.csv', 'w', newline='') as csvfile:
+    with open('data/new_battle_data.csv', 'w', newline='') as csvfile:
         csv_writer = csv.writer(csvfile)
         # Write CSV header
         csv_writer.writerow(['match_id', 'battle_time', 'player_id', 'brawler_id', 'win', 'battle_mode', 'map_name', 'player_trophies', 'brawler_trophies', 'teammates', 'opponents'])
@@ -187,4 +187,4 @@ def main(initial_player_tag, battle_quantity):
     elapsed_time = end_time - start_time
     print(f"Script executed in {elapsed_time:.2f} seconds")
 
-main("#PLYYP2RRQ", 5000)
+main("#PLYYP2RRQ", 1000)
