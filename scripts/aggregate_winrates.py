@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 import time
 import hashlib
-from utils import get_player_name, print_progress_bar
+from scripts.utils import get_player_name, print_progress_bar
 
 # Load environment variables from .env file
 start_time = time.time()
@@ -147,18 +147,17 @@ def fetch_battle_log(pass_iteration, player_tag, brawler_stats, seen_players, ba
 def main():
     battle_tracker = BattleLogTracker()
     seen_players = set()
+    traversed_players = set()
     brawler_stats = BrawlerStats()
-    iterations = 1
-    fetch_battle_log(iterations, "#PLYYP2RRQ", brawler_stats, seen_players, battle_tracker)
+    iterations = count = 1
+    initial_player_tag = "#PLYYP2RRQ" 
+    fetch_battle_log(iterations, initial_player_tag, brawler_stats, seen_players, battle_tracker) # update seen_players to all players in first players battle log
+    traversed_players.add(initial_player_tag) # add first player to traversed players set
     print(f'Initial player count: {len(seen_players)}')
-    count = 1
-    # Fetch battle logs for new player tags
-    for new_player_tag in seen_players:
+    for new_player_tag in seen_players: # iterate over each of the first players seen playres
         count += 1
-        formatted_percentage = "{:.2f}".format(((count / len(seen_players)) * 100))
-        # if count % 5 == 0:
-            # print(f"Status: {formatted_percentage}% done")
-        if new_player_tag != PLAYER_TAG:
+        if new_player_tag not in traversed_players: # check that the player has not been traversed yet
+            traversed_players.add(new_player_tag) # add the new player to the traversed set
             iterations += 1
             print_progress_bar(count, len(seen_players), prefix='Progress:', suffix='Complete', length=50)
             fetch_battle_log(iterations, new_player_tag, brawler_stats, seen_players, battle_tracker)
