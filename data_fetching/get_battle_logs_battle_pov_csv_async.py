@@ -1,4 +1,3 @@
-
 import os
 import time
 import hashlib
@@ -13,15 +12,14 @@ start_time = time.time()
 load_dotenv()
 
 # Fetch API key from environment variables
-API_KEY = os.getenv('BRAWL_STARS_API_KEY')
+API_KEY = os.getenv("BRAWL_STARS_API_KEY")
 
 if not API_KEY:
     raise ValueError("Please set the BRAWL_STARS_API_KEY in the .env file.")
 
 # Headers for the API request
-HEADERS = {
-    'Authorization': f'Bearer {API_KEY}'
-}
+HEADERS = {"Authorization": f"Bearer {API_KEY}"}
+
 
 class BattleLogTracker:
     def __init__(self):
@@ -32,7 +30,7 @@ class BattleLogTracker:
 
     def update_unique_battles(self):
         self.unique_battles += 1
-    
+
     def update_duplicate_battles(self):
         self.duplicate_battles += 1
 
@@ -44,6 +42,7 @@ class BattleLogTracker:
 
     def is_battle_processed(self, battle_hash):
         return battle_hash in self.processed_battles
+
 
 class BrawlerStats:
     def __init__(self):
@@ -64,24 +63,78 @@ class BrawlerStats:
 
     def calculate_win_rates(self):
         for brawler, stats in self.brawler_winrates.items():
-            total_games = stats['win'] + stats['loss']
-            stats['winrate'] = stats['win'] / total_games if total_games > 0 else 0
+            total_games = stats["win"] + stats["loss"]
+            stats["winrate"] = stats["win"] / total_games if total_games > 0 else 0
 
     def get_stats(self):
         return self.brawler_winrates, self.brawler_pickrates
 
+
 def get_player_team_index(player_tag, teams):
     for index, team in enumerate(teams):
         for player in team:
-            if player['tag'] == player_tag:
+            if player["tag"] == player_tag:
                 return index
     return None
 
+
 def create_battle_hash(battle_time, player_tags):
-    unique_string = battle_time + ''.join(player_tags)
+    unique_string = battle_time + "".join(player_tags)
     return unique_string
 
-async def fetch_battle_log(session, current_player_tag, brawler_stats, seen_players, to_traverse, battle_tracker, csv_writer, semaphore, num_battles):
+
+def valid_battle(battle, event):
+    valid_maps = {
+        "Canal Grande",
+        "Hideout",
+        "Shooting Star",
+        "Belle's Rock",
+        "Flaring Phoenix",
+        "Out in the Open",
+        "Center Stage",
+        "Galaxy Arena",
+        "Penalty Kick",
+        "Pinball Dreams",
+        "Retina",
+        "Dueling Beetles",
+        "Parallel Plays",
+        "Hot Potato",
+        "Kaboom Canyon",
+        "Bridge Too Far",
+        "Pit Stop",
+        "Safe Zone",
+        "Split",
+        "Double Swoosh",
+        "Hard Rock Mine",
+        "Undermine",
+    }
+    if not battle or (
+        battle.get("mode")
+        not in ["gemGrab", "knockout", "heist", "hotZone", "bounty", "brawlBall"]
+    ):  # Filter out non-ranked game modes
+        return False
+
+    if (
+        not event.get("map") or event.get("map") not in valid_maps
+    ):  # Filter out invalid maps
+        return False
+
+    if not event.get("mode") or "5V5" in event.get("mode"):  # Filter out 5v5 modes
+        return False
+
+    return True
+
+
+async def fetch_battle_log(
+    session,
+    current_player_tag,
+    seen_players,
+    to_traverse,
+    battle_tracker,
+    csv_writer,
+    semaphore,
+    num_battles,
+):
     BASE_URL = f'https://api.brawlstars.com/v1/players/{current_player_tag.replace("#", "%23")}/battlelog'
     async with semaphore:  # Acquire semaphore before making the request
         if battle_tracker.unique_battles > num_battles:
@@ -90,23 +143,22 @@ async def fetch_battle_log(session, current_player_tag, brawler_stats, seen_play
         if response.status == 200:
             battle_log = await response.json()
             if current_player_tag not in seen_players:  # Avoid seen players
-                for item in battle_log.get('items', []): # In a Battle
-                    battle = item.get('battle')
-                    if not battle or (battle.get('mode') not in ['gemGrab', 'knockout', 'heist', 'hotZone', 'bounty', 'brawlBall']):
+                for item in battle_log.get("items", []):  # In a Battle
+                    battle, event = item.get("battle"), item.get("event")
+                    if not valid_battle(battle, event):
                         continue
-                    
-                    if not item.get('event').get('mode') or "5V5" in item.get('event').get('mode'):  # sometimes ID == 0 and mode == None
-                        continue
-                    
-                    teams = battle.get('teams', [])
+      
+                    teams = battle.get("teams", [])
                     player_tags = []
                     for team in teams:
                         for player in team:
-                            player_tags.append(player['tag'])
+                            player_tags.append(player["tag"])
                     player_tags.sort()
 
                     # Avoid duplicate battles
-                    battle_hash = create_battle_hash(item.get('battleTime'), player_tags)
+                    battle_hash = create_battle_hash(
+                        item.get("battleTime"), player_tags
+                    )
                     if battle_tracker.is_battle_processed(battle_hash):
                         battle_tracker.update_duplicate_battles()
                         continue
@@ -114,10 +166,23 @@ async def fetch_battle_log(session, current_player_tag, brawler_stats, seen_play
                     battle_tracker.update_unique_battles()
 
                     if len(teams) == 2:
-                        primary_team_index = get_player_team_index(current_player_tag, teams)
-                        primary_team_victory = True if (battle.get('result') and battle.get('result') == 'victory') else False
-                        primary_team = sorted(p['brawler']['name'] for p in teams[primary_team_index])
-                        opposing_team = sorted(p['brawler']['name'] for p in teams[1 - primary_team_index])
+                        primary_team_index = get_player_team_index(
+                            current_player_tag, teams
+                        )
+                        primary_team_victory = (
+                            True
+                            if (
+                                battle.get("result")
+                                and battle.get("result") == "victory"
+                            )
+                            else False
+                        )
+                        primary_team = sorted(
+                            p["brawler"]["name"] for p in teams[primary_team_index]
+                        )
+                        opposing_team = sorted(
+                            p["brawler"]["name"] for p in teams[1 - primary_team_index]
+                        )
                         winnners, losers = [], []
                         if primary_team_victory:
                             winners = primary_team
@@ -127,18 +192,24 @@ async def fetch_battle_log(session, current_player_tag, brawler_stats, seen_play
                             losers = primary_team
 
                         while len(primary_team) < 3:
-                            primary_team.append('N/A')
+                            primary_team.append("N/A")
                         while len(opposing_team) < 3:
-                            opposing_team.append('N/A')
+                            opposing_team.append("N/A")
                         global count  # Declare that we are using the global variable
                         count += 1
                         print(count)
-                        csv_writer.writerow([
-                            item.get('event').get('mode'), 
-                            item.get('event').get('map'),
-                            winners[0], winners[1], winners[2], 
-                            losers[0], losers[1], losers[2]  
-                        ])
+                        csv_writer.writerow(
+                            [
+                                item.get("event").get("mode"),
+                                item.get("event").get("map"),
+                                winners[0],
+                                winners[1],
+                                winners[2],
+                                losers[0],
+                                losers[1],
+                                losers[2],
+                            ]
+                        )
                         for player in player_tags:
                             to_traverse.add(player)
 
@@ -146,14 +217,15 @@ async def fetch_battle_log(session, current_player_tag, brawler_stats, seen_play
         else:
             print(f"Failed to fetch battle log: RESPONSE {response.status}")
             global failures
-            failures +=1
+            failures += 1
+
 
 count = 0
 failures = 0
 
+
 async def main(initial_player_tag, battle_quantity):
     battle_tracker = BattleLogTracker()
-    brawler_stats = BrawlerStats()
     seen_players, to_traverse = set(), set()
     to_traverse.add(initial_player_tag)
 
@@ -161,12 +233,23 @@ async def main(initial_player_tag, battle_quantity):
     semaphore = asyncio.Semaphore(5)  # Limit to 10 concurrent requests
 
     date_time_str = datetime.now().strftime("%m-%d-%Y_%I:%M_%p").lower()
-    csv_file_name = f'raw_data/battle_logs_battle_pov_{date_time_str}.csv'
+    csv_file_name = f"raw_data/battle_logs_battle_pov_{date_time_str}.csv"
     # Open CSV file for writing
-    with open(csv_file_name, 'w', newline='') as csvfile:
+    with open(csv_file_name, "w", newline="") as csvfile:
         csv_writer = csv.writer(csvfile)
         # Write CSV header
-        csv_writer.writerow(['battle_mode', 'map_name', 'winner_1', 'winner_2', 'winner_3', 'loser_1', 'loser_2', 'loser_3'])
+        csv_writer.writerow(
+            [
+                "battle_mode",
+                "map_name",
+                "winner_1",
+                "winner_2",
+                "winner_3",
+                "loser_1",
+                "loser_2",
+                "loser_3",
+            ]
+        )
 
         async with aiohttp.ClientSession() as session:
             while to_traverse and count < battle_quantity:
@@ -174,25 +257,41 @@ async def main(initial_player_tag, battle_quantity):
                 traverse_copy = to_traverse.copy()
                 to_traverse.clear()
                 tasks = []
-                for player_tag in traverse_copy:  # Process every player in the traversal copy, resulting in newly encountered players being processed
+                for (
+                    player_tag
+                ) in (
+                    traverse_copy
+                ):  # Process every player in the traversal copy, resulting in newly encountered players being processed
                     if count >= battle_quantity:
                         break
-                    tasks.append(fetch_battle_log(session, player_tag, brawler_stats, seen_players, to_traverse, battle_tracker, csv_writer, semaphore,battle_quantity))
+                    tasks.append(
+                        fetch_battle_log(
+                            session,
+                            player_tag,
+                            seen_players,
+                            to_traverse,
+                            battle_tracker,
+                            csv_writer,
+                            semaphore,
+                            battle_quantity,
+                        )
+                    )
 
                 await asyncio.gather(*tasks)
-                
+
                 # Flush the file every 10,000 battles
                 if battle_tracker.unique_battles % 10000 == 0:
-                    print(f'Backing up data at {battle_tracker.unique_battles} battles')
+                    print(f"Backing up data at {battle_tracker.unique_battles} battles")
                     csvfile.flush()
 
     dupes, battles = battle_tracker.get_counters()
-    print(f'Evaluated {battles} unique battles.')
-    print(f'Ignored {dupes} duplicate battles.')
-    print(f'Encountered {failures} request failures.')
+    print(f"Evaluated {battles} unique battles.")
+    print(f"Ignored {dupes} duplicate battles.")
+    print(f"Encountered {failures} request failures.")
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Script executed in {elapsed_time:.2f} seconds")
+
 
 # Run the main function
 asyncio.run(main("#PLYYP2RRQ", 1000))
