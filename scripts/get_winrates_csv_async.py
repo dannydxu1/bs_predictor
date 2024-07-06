@@ -1,3 +1,4 @@
+
 import os
 import time
 import hashlib
@@ -27,6 +28,7 @@ class BattleLogTracker:
         self.duplicate_battles = 0
         self.unique_battles = 0
         self.processed_battles = set()
+        self.lock = asyncio.Lock()
 
     def update_unique_battles(self):
         self.unique_battles += 1
@@ -79,9 +81,12 @@ def create_battle_hash(battle_time, player_tags):
     unique_string = battle_time + ''.join(player_tags)
     return unique_string
 
-async def fetch_battle_log(session, current_player_tag, brawler_stats, seen_players, to_traverse, battle_tracker, csv_writer):
+async def fetch_battle_log(session, current_player_tag, brawler_stats, seen_players, to_traverse, battle_tracker, csv_writer, semaphore, num_battles):
     BASE_URL = f'https://api.brawlstars.com/v1/players/{current_player_tag.replace("#", "%23")}/battlelog'
-    async with session.get(BASE_URL, headers=HEADERS) as response:
+    async with semaphore:  # Acquire semaphore before making the request
+        if battle_tracker.unique_battles > num_battles:
+            return
+        response = await session.get(BASE_URL, headers=HEADERS)
         if response.status == 200:
             battle_log = await response.json()
             if current_player_tag not in seen_players:  # Avoid seen players
@@ -125,7 +130,9 @@ async def fetch_battle_log(session, current_player_tag, brawler_stats, seen_play
                             primary_team.append('N/A')
                         while len(opposing_team) < 3:
                             opposing_team.append('N/A')
-
+                        global count  # Declare that we are using the global variable
+                        count += 1
+                        print(count)
                         csv_writer.writerow([
                             item.get('event').get('mode'), 
                             item.get('event').get('map'),
@@ -137,13 +144,21 @@ async def fetch_battle_log(session, current_player_tag, brawler_stats, seen_play
 
             seen_players.add(current_player_tag)
         else:
-            print(f"Failed to fetch battle log: {response.status}, {response.text} using request URL: {BASE_URL}")
+            print(f"Failed to fetch battle log: RESPONSE {response.status}")
+            global failures
+            failures +=1
+
+count = 0
+failures = 0
 
 async def main(initial_player_tag, battle_quantity):
     battle_tracker = BattleLogTracker()
     brawler_stats = BrawlerStats()
     seen_players, to_traverse = set(), set()
     to_traverse.add(initial_player_tag)
+
+    # Initialize a semaphore to limit concurrent requests
+    semaphore = asyncio.Semaphore(5)  # Limit to 10 concurrent requests
 
     # Open CSV file for writing
     with open('data/new_battle_data_rev2.csv', 'w', newline='') as csvfile:
@@ -152,16 +167,15 @@ async def main(initial_player_tag, battle_quantity):
         csv_writer.writerow(['battle_mode', 'map_name', 'winner_1', 'winner_2', 'winner_3', 'loser_1', 'loser_2', 'loser_3'])
 
         async with aiohttp.ClientSession() as session:
-            while to_traverse and battle_tracker.unique_battles < battle_quantity:
+            while to_traverse and count < battle_quantity:
                 # Copy the current traversal set to avoid modifying it while iterating
                 traverse_copy = to_traverse.copy()
                 to_traverse.clear()
                 tasks = []
                 for player_tag in traverse_copy:  # Process every player in the traversal copy, resulting in newly encountered players being processed
-                    print_progress_bar(battle_tracker.unique_battles, battle_quantity, prefix='Progress:', suffix='Complete', length=100)
-                    if battle_tracker.unique_battles >= battle_quantity:
+                    if count >= battle_quantity:
                         break
-                    tasks.append(fetch_battle_log(session, player_tag, brawler_stats, seen_players, to_traverse, battle_tracker, csv_writer))
+                    tasks.append(fetch_battle_log(session, player_tag, brawler_stats, seen_players, to_traverse, battle_tracker, csv_writer, semaphore,battle_quantity))
 
                 await asyncio.gather(*tasks)
                 
@@ -173,9 +187,10 @@ async def main(initial_player_tag, battle_quantity):
     dupes, battles = battle_tracker.get_counters()
     print(f'Evaluated {battles} unique battles.')
     print(f'Ignored {dupes} duplicate battles.')
+    print(f'Encountered {failures} request failures.')
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Script executed in {elapsed_time:.2f} seconds")
 
 # Run the main function
-asyncio.run(main("#PLYYP2RRQ", 1000))
+asyncio.run(main("#PLYYP2RRQ", 1000000))
