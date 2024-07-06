@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import time
 import hashlib
 import csv
-from utils import get_player_name, print_progress_bar
+from shared.utils import get_player_name, print_progress_bar
 
 # Load environment variables from .env file
 start_time = time.time()

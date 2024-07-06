@@ -6,8 +6,8 @@ import asyncio
 import aiohttp
 from aiohttp import ClientResponseError, ClientConnectionError, ClientPayloadError
 from dotenv import load_dotenv
-from utils import print_progress_bar
-from brawl_stats import BattleLogTracker, BrawlerStats
+from shared.utils import print_progress_bar
+from scripts.deprecated_scripts.brawl_stats import BattleLogTracker, BrawlerStats
 
 # Load environment variables from .env file
 start_time = time.time()

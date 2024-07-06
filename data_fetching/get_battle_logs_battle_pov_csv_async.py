@@ -6,7 +6,7 @@ import csv
 import asyncio
 import aiohttp
 from dotenv import load_dotenv
-from utils import print_progress_bar
+from datetime import datetime
 
 # Load environment variables from .env file
 start_time = time.time()
@@ -160,8 +160,10 @@ async def main(initial_player_tag, battle_quantity):
     # Initialize a semaphore to limit concurrent requests
     semaphore = asyncio.Semaphore(5)  # Limit to 10 concurrent requests
 
+    date_time_str = datetime.now().strftime("%m-%d-%Y_%I:%M_%p").lower()
+    csv_file_name = f'raw_data/battle_logs_battle_pov_{date_time_str}.csv'
     # Open CSV file for writing
-    with open('data/new_battle_data_rev2.csv', 'w', newline='') as csvfile:
+    with open(csv_file_name, 'w', newline='') as csvfile:
         csv_writer = csv.writer(csvfile)
         # Write CSV header
         csv_writer.writerow(['battle_mode', 'map_name', 'winner_1', 'winner_2', 'winner_3', 'loser_1', 'loser_2', 'loser_3'])
@@ -193,4 +195,4 @@ async def main(initial_player_tag, battle_quantity):
     print(f"Script executed in {elapsed_time:.2f} seconds")
 
 # Run the main function
-asyncio.run(main("#PLYYP2RRQ", 1000000))
+asyncio.run(main("#PLYYP2RRQ", 1000))

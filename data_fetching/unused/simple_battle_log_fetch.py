@@ -2,7 +2,7 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
-from scripts.utils import get_player_name
+from shared.utils import get_player_name
 # Load environment variables from .env file
 load_dotenv()
 

@@ -72,7 +72,6 @@ def generate_brawler_stats(input_file, output_file):
     # Save the resulting DataFrame to a new CSV file
     brawler_stats.to_csv(output_file, index=False)
 
-# Example usage
 input_file = 'transformed_input.csv'
 output_file = 'brawler_stats.csv'
 generate_brawler_stats(input_file, output_file)
