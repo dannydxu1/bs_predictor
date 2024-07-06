@@ -147,7 +147,7 @@ async def fetch_battle_log(
                     battle, event = item.get("battle"), item.get("event")
                     if not valid_battle(battle, event):
                         continue
-      
+
                     teams = battle.get("teams", [])
                     player_tags = []
                     for team in teams:
@@ -223,6 +223,14 @@ async def fetch_battle_log(
 count = 0
 failures = 0
 
+def format_number(value):
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M" if value % 1_000_000 != 0 else f"{value // 1_000_000}M"
+    elif value >= 1_000:
+        return f"{value / 1_000:.1f}K" if value % 1_000 != 0 else f"{value // 1_000}K"
+    else:
+        return str(value)
+    
 
 async def main(initial_player_tag, battle_quantity):
     battle_tracker = BattleLogTracker()
@@ -233,7 +241,9 @@ async def main(initial_player_tag, battle_quantity):
     semaphore = asyncio.Semaphore(5)  # Limit to 10 concurrent requests
 
     date_time_str = datetime.now().strftime("%m-%d-%Y_%I:%M_%p").lower()
-    csv_file_name = f"raw_data/battle_logs_battle_pov_{date_time_str}.csv"
+    csv_file_name = (
+        f"raw_data/battle_logs_{format_number(battle_quantity)}_{date_time_str}.csv"
+    )
     # Open CSV file for writing
     with open(csv_file_name, "w", newline="") as csvfile:
         csv_writer = csv.writer(csvfile)
@@ -291,7 +301,8 @@ async def main(initial_player_tag, battle_quantity):
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"Script executed in {elapsed_time:.2f} seconds")
+    print(f'CSV file saved as "{csv_file_name}"')
 
 
 # Run the main function
-asyncio.run(main("#PLYYP2RRQ", 1000))
+asyncio.run(main("#PLYYP2RRQ", 100))

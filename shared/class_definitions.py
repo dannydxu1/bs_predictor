@@ -1,4 +1,3 @@
-# brawl_stats.py
 class BattleLogTracker:
     def __init__(self):
         self.duplicate_battles = 0

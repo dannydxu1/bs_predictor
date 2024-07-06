@@ -8,27 +8,16 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
 
-# List of allowed maps
-allowed_maps = [
-    "Canal Grande", "Hideout", "Shooting Star", "Belle's Rock", "Flaring Phoenix",
-    "Out in the Open", "Center Stage", "Galaxy Arena", "Penalty Kick", "Pinball Dreams", 
-    "Retina", "Dueling Beetles", "Open Business", "Parallel Plays", "Hot Potato",
-    "Kaboom Canyon", "Bridge Too Far", "Pit Stop", "Safe Zone", "Split",
-    "Double Swoosh", "Hard Rock Mine", "Undermine"
-]
 
 # Load the data
-data = pd.read_csv('match_data.csv')
-
-# Preprocess the data: Remove rows with maps not in the allowed list
-data = data[data['map_name'].isin(allowed_maps)]
+data = pd.read_csv('raw_data/battle_logs_1M_07-06-2024_01:34_pm.csv')
 
 # Sample the data
 sample_size = 700000  # Adjusted sample size to 100,000 rows
 sample_data = data.sample(n=sample_size, random_state=42)
 
 # Preprocess the data
-categorical_features = ['battle_mode', 'map_name', 'teammate1', 'teammate2', 'opponent1', 'opponent2', 'opponent3']
+categorical_features = ['battle_mode', 'map_name', 'teammate1', 'teammate2', 'teammate3', 'opponent1', 'opponent2', 'opponent3']
 target = 'brawler_id'
 
 preprocessor = ColumnTransformer(
@@ -68,5 +57,5 @@ print(f'Accuracy: {accuracy}')
 print(f'Classification Report:\n{report}')
 
 # Save the pipeline (including the preprocessor and the classifier)
-joblib.dump(pipeline, 'trained_model2.pkl')
+joblib.dump(pipeline, 'models/random_forest.pkl')
 print("Model saved successfully!")
