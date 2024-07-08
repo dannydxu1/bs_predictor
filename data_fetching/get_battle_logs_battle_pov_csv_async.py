@@ -83,7 +83,10 @@ def create_battle_hash(battle_time, player_tags):
     return unique_string
 
 
-def valid_battle(battle, event):
+def valid_battle(battle, event, only_ranked):
+    if not battle or not event.get("map") or not event.get("mode"):
+        return False
+    
     valid_maps = {
         "Canal Grande",
         "Hideout",
@@ -108,18 +111,10 @@ def valid_battle(battle, event):
         "Hard Rock Mine",
         "Undermine",
     }
-    if not battle or (
-        battle.get("mode")
-        not in ["gemGrab", "knockout", "heist", "hotZone", "bounty", "brawlBall"]
-    ):  # Filter out non-ranked game modes
+    if battle.get("mode") not in ["gemGrab", "knockout", "heist", "hotZone", "bounty", "brawlBall"] or event.get("map") not in valid_maps or "5V5" in event.get("mode"):  
         return False
 
-    if (
-        not event.get("map") or event.get("map") not in valid_maps
-    ):  # Filter out invalid maps
-        return False
-
-    if not event.get("mode") or "5V5" in event.get("mode"):  # Filter out 5v5 modes
+    if only_ranked and battle and battle.get('type') != "soloRanked":
         return False
 
     return True
@@ -145,7 +140,7 @@ async def fetch_battle_log(
             if current_player_tag not in seen_players:  # Avoid seen players
                 for item in battle_log.get("items", []):  # In a Battle
                     battle, event = item.get("battle"), item.get("event")
-                    if not valid_battle(battle, event):
+                    if not valid_battle(battle, event, False):
                         continue
 
                     teams = battle.get("teams", [])
@@ -242,7 +237,7 @@ async def main(initial_player_tag, battle_quantity):
 
     date_time_str = datetime.now().strftime("%m-%d-%Y_%I:%M_%p").lower()
     csv_file_name = (
-        f"raw_data/battle_logs_{format_number(battle_quantity)}_{date_time_str}.csv"
+        f"raw_data/battle_logs_{date_time_str}_{format_number(battle_quantity)}.csv"
     )
     # Open CSV file for writing
     with open(csv_file_name, "w", newline="") as csvfile:
@@ -305,4 +300,4 @@ async def main(initial_player_tag, battle_quantity):
 
 
 # Run the main function
-asyncio.run(main("#PLYYP2RRQ", 100))
+asyncio.run(main("#PLYYP2RRQ", 3000000))

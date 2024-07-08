@@ -1,28 +1,30 @@
 import pandas as pd
 import re
 from datetime import datetime
+import glob
+import os
 
 # For new brawlers, they are dropped unless included in one of the classes
 # Define brawler classes
-damage_dealers = ["8-BIT", "CARL", "CHESTER", "CHUCK", "CLANCY", "COLETTE", "COLT", "EVE", 
-    "LOLA", "NITA", "PEARL", "R-T", "RICO", "SHELLY", "SPIKE", "SURGE", "TARA"]
+damage_dealers = ["8-Bit", "Carl", "Chester", "Chuck", "Clancy", "Colette", "Colt", "Eve", 
+    "Lola", "Nita", "Pearl", "R-T", "Rico", "Shelly", "Spike", "Surge", "Tara"]
 
-controllers = ["AMBER", "BO", "JESSIE", "LOU", "CHARLIE", "MR. P", "EMZ", "OTIS", 
-               "GALE", "SANDY", "GENE", "GRIFF", "SQUEAK", "WILLOW", "PENNY"]
+controllers = ["Amber", "Bo", "Jessie", "Lou", "Charlie", "Mr. P", "Emz", "Otis", 
+               "Gale", "Sandy", "Gene", "Griff", "Squeak", "Willow", "Penny"]
 
-snipers = ["ANGELO", "BEA", "BELLE", "BONNIE", "BROCK", "JANET", "MAISIE", "MANDY",
-             "NANI", "PIPER"]
+snipers = ["Angelo", "Bea", "Belle", "Bonnie", "Brock", "Janet", "Maisie", "Mandy",
+             "Nani", "Piper"]
 
-throwers = ["BARLEY", "DYNAMIKE", "GROM", "LARRY & LAWRIE", "SPROUT", "TICK"]
+throwers = ["Barley", "Dynamike", "Grom", "Larry & Lawrie", "Sprout", "Tick"]
 
-assassins = ["BUZZ", "CORDELIUS", "CROW", "EDGAR", "FANG", "LEON", "LILY",
-             "MELODIE", "MICO", "MORTIS", "SAM", "STU"]
+assassins = ["Buzz", "Cordelius", "Crow", "Edgar", "Fang", "Leon", "Lily",
+             "Melodie", "Mico", "Mortis", "Sam", "Stu"]
 
-tanks = ["ASH", "BIBI", "BULL", "BUSTER", "DARRYL", "DRACO", "EL PRIMO", "FRANK",
-          "HANK", "JACKY", "MEG", "ROSA"]
+tanks = ["Ash", "Bibi", "Bull", "Buster", "Darryl", "Draco", "El Primo", "Frank",
+          "Hank", "Jacky", "Meg", "Rosa"]
 
-supports = ["BERRY", "BYRON", "DOUG", "GRAY", "GUS", "KIT", "MAX", "PAM", "POCO",
-             "RUFFS"]
+supports = ["Berry", "Byron", "Doug", "Gray", "Gus", "Kit", "Max", "Pam", "Poco",
+             "Ruffs"]
 
 def generate_brawler_stats(input_file, output_file):
     # Read the transformed CSV file
@@ -47,7 +49,7 @@ def generate_brawler_stats(input_file, output_file):
 
     # Calculate usage rate
     total_battles = len(df_long)
-    brawler_stats['usage_rate'] = (df_long.groupby('brawler_id')['win'].count().values / total_battles) * 100
+    brawler_stats['usage_rate'] = (df_long.groupby('brawler_id')['win'].count().values / total_battles)
 
     # Standardize win rate and usage rate
     brawler_stats['standardized_winrate'] = (brawler_stats['win_rate'] - brawler_stats['win_rate'].mean()) / brawler_stats['win_rate'].std()
@@ -91,11 +93,16 @@ def generate_brawler_stats(input_file, output_file):
     brawler_stats.to_csv(output_file, index=False)
 
 def main(input_file):
-    timestamp_pattern = r'\d{2}-\d{2}-\d{4}_\d{2}:\d{2}_\w{2}'  # Regular expression to extract the timestamp
+    if not input_file:
+        print("invalid input_file")
+        return
+    else:
+        print(input_file)
+    timestamp_pattern = r'battle_logs_(.*).csv'  # Regular expression to extract the timestamp
     match = re.search(timestamp_pattern, input_file)
 
     if match:
-        timestamp = match.group(0)
+        timestamp = match.group(1)
         output_file = f'all_brawler_stats_{timestamp}.csv'
         print(f'Exporting brawler stats to output_file {output_file}')
     else:
@@ -104,5 +111,12 @@ def main(input_file):
     
     generate_brawler_stats(input_file, output_file)
 
-# Example usage
-main('raw_data/battle_logs_1M_07-06-2024_01:34_pm.csv')
+def find_most_recent_file(directory):
+    files = glob.glob(os.path.join(directory, '*'))
+    if not files:
+        return None
+    most_recent_file = max(files, key=os.path.getctime)
+    return most_recent_file
+
+main(find_most_recent_file('raw_data'))
+
