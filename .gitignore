@@ -1,2 +1,5 @@
 .env
 venv/
+*.json
+*.csv
+*.pkl
